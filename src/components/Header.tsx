@@ -13,7 +13,7 @@ export default function Header() {
       <div className="flex h-full w-full items-center justify-between px-4 md:px-8">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center space-x-2">
-          <Image src="/images/AP_logo_2.png" alt="Alina Popova Logo" width={40} height={40} priority />
+          <Image src="/images/AP_Logo_2.png" alt="Alina Popova Logo" width={40} height={40} priority />
           <span className="text-2xl font-bold tracking-tight text-cerulean">Alina Popova</span>
         </Link>
 
