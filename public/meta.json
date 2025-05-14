@@ -1,0 +1,16 @@
+[
+    {
+      "title": "High Impact Content",
+      "slug": "high-impact-content",
+      "author": "Alina Popova",
+      "description": "How to create high impact content that drives engagement.",
+      "date": "2025-05-10"
+    },
+    {
+      "title": "Other Example Post",
+      "slug": "other-example",
+      "author": "Alina Popova",
+      "description": "An example post to test the blog setup.",
+      "date": "2025-05-09"
+    }
+  ]

@@ -1,0 +1,31 @@
+/* src/styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* Make absolutely sure no browser default margins sneak in */
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;  /* prevents sideways scroll from negative margins */
+    box-sizing: border-box;
+  }
+  
+  /* Any element with class `container` shouldn’t set side padding by default.
+     Tailwind’s `container` utility can be customised like this instead: */
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
+  .full-bleed {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
