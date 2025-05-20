@@ -114,19 +114,19 @@ const brandReels = [
   {
     src: "/videos/business-1.mp4",
     handle: "@rumba.dubai",
-    stats: { followers: "75 k", likes: "210 k", shares: "32 k" },
+    stats: { followers: "294 k", likes: "210 k", shares: "32 k" },
     revenue: 73.8,  
   },
   {
     src: "/videos/business-2.mp4",
     handle: "@oraclubdubai",
-    stats: { followers: "62 k", likes: "155 k", shares: "18 k" },
+    stats: { followers: "38 k", likes: "155 k", shares: "18 k" },
     revenue: 10.6,
   },
   {
     src: "/videos/business-4.mp4",
     handle: "@evabeachrestaurant",
-    stats: { followers: "110 k", likes: "340 k", shares: "45 k" },
+    stats: { followers: "51.6 k", likes: "340 k", shares: "45 k" },
     revenue: 13.1,
   },
 ] as const;
