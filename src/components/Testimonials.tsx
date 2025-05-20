@@ -42,9 +42,9 @@ const testimonials: Testimonial[] = [
 export default function Testimonials() {
   return (
     <section
-      aria-labelledby="testimonials-heading"
-      className="full-bleed bg-softgray pt-20 pb-0"
-    >
+          aria-labelledby="testimonials-heading"
+          className="full-bleed bg-softgray pt-20 pb-10 md:pb-0"
+        >
       <h2
         id="testimonials-heading"
         className="mb-14 text-center text-3xl font-extrabold text-rich-black md:text-4xl"
@@ -53,8 +53,7 @@ export default function Testimonials() {
       </h2>
 
       {/* Snap‑scroll on mobile, 3‑col grid on desktop */}
-      <div className="mx-auto flex max-w-7xl gap-8 overflow-x-auto px-6 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible">
-        {testimonials.map(({ name, role, avatar, quote }) => (
+      <div className="mx-auto flex max-w-7xl gap-8 overflow-x-auto px-6 pb-6 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible">        {testimonials.map(({ name, role, avatar, quote }) => (
           <figure
             key={name}
             className="snap-center flex-none w-72 rounded-3xl bg-white p-6 shadow-md transition hover:shadow-lg
