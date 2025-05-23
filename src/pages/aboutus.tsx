@@ -19,12 +19,12 @@ const team = [
     location: "Bangalore, India",
     avatar: "/images/Rufus_Bright.jpg", // replace with real image path
   },
-  {
-    name: "Roma Anderson",
-    title: "Lead Full‑Stack Engineer",
-    location: "Mumbai, India",
-    avatar: "/images/Judith.jpeg", // replace with real image path
-  },
+ {
+  name: "Giulia Rossi",
+  title: "Lead Full-Stack Engineer",
+  location: "Florence, Italy",
+  avatar: "/images/Judith.jpeg"
+},
 ];
 
 
