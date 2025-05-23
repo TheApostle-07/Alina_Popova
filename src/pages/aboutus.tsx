@@ -20,10 +20,10 @@ const team = [
     avatar: "/images/Rufus_Bright.jpg", // replace with real image path
   },
   {
-    name: "Priya Malhotra",
+    name: "Roma Anderson",
     title: "Lead Full‑Stack Engineer",
     location: "Mumbai, India",
-    avatar: "/images/Priya.jpeg", // replace with real image path
+    avatar: "/images/Judith.jpeg", // replace with real image path
   },
 ];
 
