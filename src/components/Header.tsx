@@ -13,7 +13,7 @@ export default function Header() {
       <div className="flex h-full w-full items-center justify-between px-4 md:px-8">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center space-x-2">
-          <Image src="/images/AP_Logo_2.png" alt="Alina Popova Logo" width={40} height={40} priority />
+          <Image src="/images/AP_logo_2.png" alt="Alina Popova Logo" width={40} height={40} priority />
           <span className="text-2xl font-bold tracking-tight text-cerulean">Alina Popova</span>
         </Link>
 
@@ -23,6 +23,7 @@ export default function Header() {
             { label: "Beginners", href: "/beginners" },
             { label: "Businesses", href: "/businesses" },
             { label: "Creators", href: "/creators" },
+            { label: "Casting", href: "/casting" },
           ].map(({ label, href }) => (
             <Link key={label} href={href} className="text-gray-700 transition hover:text-cerulean">
               {label}
@@ -52,7 +53,7 @@ export default function Header() {
       {open && (
         <div className="md:hidden bg-white/90 backdrop-blur-md shadow-lg">
           <nav className="flex flex-col items-center space-y-4 py-4">
-            {["Beginners", "Businesses", "Creators"].map((l) => (
+            {["Beginners", "Businesses", "Creators", "Casting"].map((l) => (
               <Link
                 key={l}
                 href={`/${l.toLowerCase()}`}
