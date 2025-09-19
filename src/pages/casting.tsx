@@ -2,6 +2,7 @@ import Head from "next/head";
 import { useMemo, useRef, useState, useEffect } from "react";
 import { CheckCircle2, AlertCircle, Check, ChevronRight, ChevronDown, Image as ImageIcon } from "lucide-react";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 /**
  * Casting page – Polished UX
@@ -116,6 +117,54 @@ function splitLinkTokens(raw: string) {
   return { valid: deduped, invalid, all: tokens };
 }
 
+// Availability validator: accepts "flexible" or clear ranges (e.g., 28–30 Sept, 28 Sep–2 Oct)
+function availabilityLooksValid(raw: string): boolean {
+  const s = (raw || "").trim();
+  if (!s) return false;
+  if (/\b(flexible|tbd|open)\b/i.test(s)) return true;
+
+  // Normalise dashes to simple hyphen
+  const str = s.replace(/[\u2012-\u2015]/g, "-");
+
+  // Count month *occurrences* correctly (use global regex)
+  const monthRx = /(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)/i;
+  const monthCount = (str.match(new RegExp(monthRx.source, "gi")) || []).length;
+  const hasMonth = monthCount > 0;
+
+  // Extract day numbers (1–31)
+  const days = (str.match(/\b([0-3]?\d)\b/g) || [])
+    .map((n) => parseInt(n, 10))
+    .filter((n) => n >= 1 && n <= 31);
+  const isRange = /\bto\b|\-/i.test(str);
+
+  if (!isRange) {
+    // Single date like "28 Sept" or with explicit dd/mm – require a month or a dd/mm token
+    const hasDmy = /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/.test(str);
+    return hasMonth ? days.length >= 1 : hasDmy;
+  }
+
+  // Range logic
+  if (hasMonth) {
+    // One month mentioned with two day numbers → ensure start <= end (e.g., 28–30 Sept OK; 28–20 Sept invalid)
+    if (monthCount <= 1 && days.length >= 2) {
+      const start = days[0];
+      const end = days[days.length - 1];
+      return start <= end;
+    }
+    // Two different months (e.g., 28 Sep – 2 Oct) → accept
+    return days.length >= 1;
+  }
+
+  // No month words → allow dd/mm or dd/mm/yyyy ranges; ensure order when same month
+  const dmy = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/g;
+  const parts = [...str.matchAll(dmy)].map((m) => ({ d: +m[1], m: +m[2] }));
+  if (parts.length === 0) return false;
+  if (parts.length === 1) return true; // single date OK
+  const a = parts[0], b = parts[parts.length - 1];
+  if (a.m === b.m) return a.d <= b.d; // same month → ensure order
+  return true; // different months
+}
+
 /* UI helpers */
 function fieldClass(status: FieldStatus) {
   const base = "w-full border bg-white text-sm text-slate-900 outline-none transition rounded-xl pl-3 pr-9 pt-[1.65rem] pb-2";
@@ -128,6 +177,12 @@ function statusFrom(valid?: boolean, touched?: boolean): FieldStatus {
   if (!touched) return "neutral";
   if (valid) return "success";
   return "error";
+}
+
+function optionalStatus(value?: string | null, valid?: boolean, touched?: boolean): FieldStatus {
+  if (!touched) return "neutral";         // untouched → neutral
+  if (!value) return "neutral";            // empty optional → neutral (no green/red)
+  return valid ? "success" : "error";      // only show state when user provided a value
 }
 
 function RightIcon({ status }: { status: FieldStatus }) {
@@ -163,7 +218,9 @@ export default function CastingPage() {
   const [isFormInView, setIsFormInView] = useState(false);
   const [isFooterInView, setIsFooterInView] = useState(false);
 
-  const endpoint = process.env.NEXT_PUBLIC_CASTING_ENDPOINT || "";
+  // Hardcoded Apps Script endpoint (public web app URL ending with /exec)
+  const CASTING_ENDPOINT: string = "https://script.google.com/macros/s/AKfycbwh76-u3OL2-i68by-20mmN8OKN0vG0gItlfK7FNoWwX2h1QxHVndDtQ4xtfL-VaQcruw/exec"; // TODO: paste your deployed Web App URL here
+  const endpoint = CASTING_ENDPOINT; // Apps Script uses no-cors simple POST
   const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "";
   const LOCAL_KEY = "ap_casting_form_v2";
 
@@ -221,7 +278,7 @@ export default function CastingPage() {
     phone: { valid: phoneOk(data.phone), message: "Enter a valid number or leave blank" },
     city: { valid: data.city.trim().length > 1, message: "Enter your city" },
     portfolioUrl: { valid: !data.portfolioUrl || urlOk(data.portfolioUrl), message: "Optional — add https:// if you have a link" },
-    availability: { valid: data.availability.trim().length > 1, message: "Add dates or a window" },
+    availability: { valid: availabilityLooksValid(data.availability), message: "Use a clear range like 28–30 Sept or 28 Sep–2 Oct, or write 'Flexible'." },
     imageLinks: { valid: !!data.imageLinks.trim() && linksValid, message: linksValid ? "" : "Add 3–6 public links" },
     isAdult: { valid: data.isAdult, message: "Must be 18+" },
     poshConsent: { valid: data.poshConsent, message: "Agree to our safe, respectful code of conduct" },
@@ -232,9 +289,9 @@ export default function CastingPage() {
     dob: statusFrom(validations.dob.valid, touched.dob),
     fullName: statusFrom(validations.fullName.valid, touched.fullName),
     email: statusFrom(validations.email.valid, touched.email),
-    phone: statusFrom(validations.phone.valid, touched.phone),
+    phone: optionalStatus(data.phone, validations.phone.valid, touched.phone),
     city: statusFrom(validations.city.valid, touched.city),
-    portfolioUrl: data.portfolioUrl ? statusFrom(validations.portfolioUrl.valid, touched.portfolioUrl) : (touched.portfolioUrl ? "neutral" : "neutral"),
+    portfolioUrl: optionalStatus(data.portfolioUrl, validations.portfolioUrl.valid, touched.portfolioUrl),
     availability: statusFrom(validations.availability.valid, touched.availability),
     imageLinks: statusFrom(validations.imageLinks.valid, touched.imageLinks),
   } as const;
@@ -517,21 +574,46 @@ export default function CastingPage() {
       };
       if (endpoint) {
         const isAppsScript = /script\.google\.com/.test(endpoint);
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: isAppsScript
-            ? { "Content-Type": "text/plain;charset=utf-8" }
-            : { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const payloadText = JSON.stringify(payload);
 
-        if (!isAppsScript && !res.ok) throw new Error(`Submission failed (${res.status})`);
         if (isAppsScript) {
+          // Simple request: no preflight, no CORS headers required
+          try {
+            await fetch(endpoint, {
+              method: "POST",
+              mode: "no-cors",
+              credentials: "omit",
+              cache: "no-store",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: payloadText,
+              keepalive: true,
+            });
+            // Response will be opaque; reaching here means it was sent.
+          } catch (err) {
+            // Fallback: navigator.sendBeacon (best-effort, also simple request)
+            try {
+              const ok = navigator.sendBeacon(
+                endpoint,
+                new Blob([payloadText], { type: "text/plain;charset=utf-8" })
+              );
+              if (!ok) throw new Error("sendBeacon failed");
+            } catch (err2) {
+              throw err; // surface the original fetch error if beacon also fails
+            }
+          }
+        } else {
+          // Non-AppsScript APIs (expect real CORS + readable response)
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: payloadText,
+          });
+          if (!res.ok) throw new Error(`Submission failed (${res.status})`);
           try {
             const j = await res.json();
-            if (!j?.ok) throw new Error("Apps Script reported failure");
-          } catch {
-            // If non-JSON, assume success for simple CORS mode
+            if (j && j.ok === false) throw new Error("Server reported failure");
+          } catch (_) {
+            // If server returns empty/non-JSON, treat HTTP 2xx as success
           }
         }
       }
@@ -784,7 +866,7 @@ export default function CastingPage() {
                           }
                           errorMessage={touched.portfolioUrl && !!data.portfolioUrl && !validations.portfolioUrl.valid ? validations.portfolioUrl.message : undefined}
                         />
-                        <FloatingInput name="availability" label="Availability window" value={data.availability} onChange={handleChange} onBlur={() => setTouched((t)=>({...t, availability: true}))} placeholder="e.g., 28–30 Sept, flexible" status={statuses.availability} errorMessage={touched.availability && !validations.availability.valid ? validations.availability.message : undefined} required />
+                        <FloatingInput name="availability" label="Availability window" value={data.availability} onChange={handleChange} onBlur={() => setTouched((t)=>({...t, availability: true}))} placeholder="e.g., 28–30 Sept, flexible" status={statuses.availability} errorMessage={touched.availability && !validations.availability.valid ? validations.availability.message : undefined} required hint="e.g., 28–30 Sept, 28 Sep–2 Oct, or 'Flexible'" />
                       </div>
                       <div className="grid gap-5 md:grid-cols-2">
                         <FloatingInput name="phone" label="Phone" value={data.phone || ''} onChange={handleChange} onBlur={() => setTouched((t)=>({...t, phone: true}))} placeholder="Optional" status={statuses.phone} errorMessage={touched.phone && !validations.phone.valid ? validations.phone.message : undefined} />
@@ -1022,10 +1104,6 @@ export default function CastingPage() {
                           </span>
                           {data.dob && <span className="text-xs text-slate-500">DOB: {data.dob}</span>}
                         </div>
-                        <label className="flex items-start gap-3 text-sm">
-                          <input type="checkbox" name="poshConsent" checked={data.poshConsent} onChange={handleChange} className="mt-1 h-4 w-4 rounded border-black/20" required />
-                          <span>I agree to a <strong>professional, respectful</strong> working environment and the code of conduct on set.</span>
-                        </label>
                       </div>
                       <div className="mt-4 rounded-xl border border-black/10 bg-white p-4 text-sm text-slate-700">
                         <div className="font-medium mb-2">Quick review</div>
@@ -1049,6 +1127,18 @@ export default function CastingPage() {
                     </>
                   )}
                   </div>
+
+                  {/* Consent block for step 7 */}
+                  {step === 6 && (
+                    <div className="-mt-2 mb-1 rounded-xl border border-black/10 bg-white p-4 text-sm">
+                      <label className="flex items-start gap-3">
+                        <input id="poshConsent" type="checkbox" name="poshConsent" checked={data.poshConsent} onChange={handleChange} className="mt-1 h-4 w-4 rounded border-black/20" required />
+                        <span>
+                          I agree to a <strong>professional, respectful</strong> working environment and the on‑set code of conduct.
+                        </span>
+                      </label>
+                    </div>
+                  )}
 
                   {/* Wizard actions */}
                   <div className="flex flex-col items-center justify-between gap-3 pt-2 md:flex-row">
@@ -1085,9 +1175,13 @@ export default function CastingPage() {
             <p>Shortlisted talent will receive a call sheet with styling, MUA/H schedule, location, and payment terms. Chaperones are welcome.</p>
           </div>
           {/* sentinel for sticky CTA hide */}
-          <div ref={footerRef} className="h-2 w-full" />
+          <div className="h-2 w-full" />
         </div>
       </section>
+
+      <Footer />
+      {/* zero-height sentinel for sticky CTA hide (does not affect layout) */}
+      <div ref={footerRef} className="h-0 w-px overflow-hidden" aria-hidden />
 
       {/* Success overlay modal */}
       {submitted && (
