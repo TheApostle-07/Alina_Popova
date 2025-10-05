@@ -1,6 +1,6 @@
 import Head from "next/head";
 import { useMemo, useRef, useState, useEffect } from "react";
-import { CheckCircle2, AlertCircle, Check, ChevronRight, ChevronDown, Image as ImageIcon } from "lucide-react";
+import { CheckCircle2, AlertCircle, Check, ChevronRight, ChevronDown, Image as ImageIcon, Loader2 } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
@@ -217,6 +217,36 @@ export default function CastingPage() {
   const [isHeroInView, setIsHeroInView] = useState(true);
   const [isFormInView, setIsFormInView] = useState(false);
   const [isFooterInView, setIsFooterInView] = useState(false);
+
+  // Page hydration loader (anti‑FOUC): show a clean overlay briefly until the page hydrates
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    // Small delay prevents flicker on very fast devices; extend if needed
+    const t = window.setTimeout(() => setHydrated(true), 300);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  // --- Fallback preview switch (append ?fallback or ?skin=fallback to URL) ---
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const force = sp.has("fallback") || sp.get("skin") === "fallback";
+    if (!force) return;
+
+    // Remove Tailwind CDN/compiled styles so only the component's fallback CSS is active.
+    const nodes = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'));
+    nodes.forEach((n) => {
+      const html = (n as HTMLElement).outerHTML || "";
+      const text = (n as HTMLStyleElement).textContent || "";
+      if (/tailwind|preflight|_next\/static\/css|cdn\.tailwindcss\.com|--tw-/.test(html + text)) {
+        n.parentElement?.removeChild(n);
+      }
+    });
+
+    // Add a small marker for debugging (optional)
+    document.documentElement.setAttribute("data-fallback", "true");
+    console.info("[casting] Fallback CSS forced via ?fallback");
+  }, []);
 
   // Hardcoded Apps Script endpoint (public web app URL ending with /exec)
   const CASTING_ENDPOINT: string = "https://script.google.com/macros/s/AKfycbwh76-u3OL2-i68by-20mmN8OKN0vG0gItlfK7FNoWwX2h1QxHVndDtQ4xtfL-VaQcruw/exec"; // TODO: paste your deployed Web App URL here
@@ -713,11 +743,13 @@ export default function CastingPage() {
           name="description"
           content="Professional model casting for fashion, commercial, and e-commerce shoots. Paid projects. Safe, respectful. Apply with portfolio and image links."
         />
+        <meta name="color-scheme" content="light" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jobPostingJson }} />
       </Head>
       <Header />
       {/* Spacer to push content below fixed header */}
       <div className="h-16 md:h-20" aria-hidden />
+      <main className="ap-casting">
 
       {/* HERO */}
       <section ref={heroRef} className="relative overflow-hidden">
@@ -755,7 +787,7 @@ export default function CastingPage() {
             {/* overflow-visible on mobile prevents clipped dropdowns */}
             <div className="overflow-visible md:overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm">
               {/* Progress bar */}
-              <div className={`h-1 w-full bg-gradient-to-r from-emerald-500 via-[#00a8e8] to-emerald-500`} style={{ width: `${Math.max(6, Math.round(((step + 1) / TOTAL_STEPS) * 100))}%` }} />
+              <div className={`h-1 w-full bg-gradient-to-r from-emerald-500 via-[#00a8e8] to-emerald-500 stepbar`} style={{ width: `${Math.max(6, Math.round(((step + 1) / TOTAL_STEPS) * 100))}%` }} />
               <div className="p-6">
                 <h2 className="text-2xl font-semibold">Apply for Casting</h2>
                 <p className="mt-2 text-sm text-slate-600">Please complete all required fields. Share 3–6 public links to recent images (Drive/portfolio/IG posts).</p>
@@ -797,7 +829,7 @@ export default function CastingPage() {
                     <div>Step {step + 1} of {TOTAL_STEPS}</div>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-                        <span key={i} className={`h-1.5 w-6 rounded-full transition-all ${i <= step ? 'bg-emerald-600' : 'bg-slate-200'}`} />
+                        <span key={i} className="step-dot" data-on={i <= step ? '1' : '0'} />
                       ))}
                     </div>
                   </div>
@@ -814,12 +846,15 @@ export default function CastingPage() {
                             <button
                               type="button"
                               onClick={() => reachable && goToStep(i)}
-                              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 transition ${
+                              className={`step-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 transition ${
                                 active ? 'bg-emerald-600 text-white' : done ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-white text-slate-700 ring-1 ring-black/10'
                               } ${!reachable ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-sm'}`}
                               aria-current={active ? 'step' : undefined}
+                              data-active={active ? 'true' : 'false'}
+                              data-done={done ? 'true' : 'false'}
+                              data-reachable={reachable ? 'true' : 'false'}
                             >
-                              <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${active ? 'bg-white/20' : done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                              <span className={`num inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${active ? 'bg-white/20' : done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
                                 {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
                               </span>
                               <span className="whitespace-nowrap">{lbl}</span>
@@ -1098,7 +1133,7 @@ export default function CastingPage() {
                     <>
                       <SectionTitle>Policies & Review</SectionTitle>
                       <div ref={policiesRef} className="space-y-3">
-                        <div className="flex items-center gap-3 text-sm">
+                        <div className="flex flex-col items-center justify-center gap-2 text-sm sm:flex-row sm:justify-start">
                           <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[12px] ring-1 ${data.isAdult ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-rose-200'}`}>
                             {data.isAdult ? '18+ verified from DOB' : 'Under 18 — not eligible'}
                           </span>
@@ -1171,7 +1206,7 @@ export default function CastingPage() {
       {/* FOOTER NOTE */}
       <section className="bg-white">
         <div className="mx-auto max-w-5xl px-6 pb-16">
-          <div className="rounded-2xl border border-black/5 bg-gradient-to-b from-white to-slate-50 p-6 text-center text-sm text-slate-600">
+          <div className="footer-note rounded-2xl border border-black/5 bg-gradient-to-b from-white to-slate-50 p-6 text-center text-sm text-slate-600">
             <p>Shortlisted talent will receive a call sheet with styling, MUA/H schedule, location, and payment terms. Chaperones are welcome.</p>
           </div>
           {/* sentinel for sticky CTA hide */}
@@ -1179,6 +1214,7 @@ export default function CastingPage() {
         </div>
       </section>
 
+      </main>
       <Footer />
       {/* zero-height sentinel for sticky CTA hide (does not affect layout) */}
       <div ref={footerRef} className="h-0 w-px overflow-hidden" aria-hidden />
@@ -1214,8 +1250,177 @@ export default function CastingPage() {
         </div>
       )}
 
+      {/* Hydration / submit overlay */}
+      {(!hydrated || submitting) && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-white/95 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 text-slate-700">
+            <Loader2 className="h-6 w-6 animate-spin text-[#007EA7]" aria-hidden />
+            <p className="text-sm font-medium">Boosting your reach—setting things up…</p>
+            {submitting ? <p className="text-xs text-slate-500">Sending your application…</p> : null}
+          </div>
+        </div>
+      )}
+
       {/* Global styles */}
       <style jsx global>{`
+        /* ================= Casting page fallback CSS (scoped + low specificity) ================= */
+        :root{ color-scheme: light; }
+
+        :where(.ap-casting){
+          --ap-bg:#fff;
+          --ap-text:#0f172a;
+          --ap-muted:#475569;
+          --ap-border:rgba(0,0,0,.08);
+          --ap-emerald:#059669;
+          --ap-emerald-50:#ecfdf5;
+          --ap-emerald-200:#a7f3d0;
+          --ap-rose:#e11d48;
+          --ap-slate-50:#f8fafc;
+          --ap-primary-1:#003459;
+          --ap-primary-2:#007EA7;
+          --ap-primary-3:#00a8e8;
+
+          font:400 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+          color:var(--ap-text);
+          background:var(--ap-bg);
+          -webkit-font-smoothing:antialiased;
+          -moz-osx-font-smoothing:grayscale;
+        }
+
+        :where(.ap-casting .mx-auto){margin-left:auto;margin-right:auto;}
+        :where(.ap-casting .px-6){padding-left:24px;padding-right:24px;}
+        :where(.ap-casting .py-12){padding-top:48px;padding-bottom:48px;}
+        :where(.ap-casting .p-6){padding:24px;}
+        :where(.ap-casting .rounded-xl){border-radius:12px;}
+        :where(.ap-casting .rounded-2xl){border-radius:16px;}
+        :where(.ap-casting .border){border:1px solid var(--ap-border);}
+        :where(.ap-casting .bg-white){background:#fff;}
+        :where(.ap-casting .text-center){text-align:center;}
+        :where(.ap-casting .rounded-full){border-radius:9999px;}
+
+        :where(.ap-casting h1){font-weight:600;font-size:clamp(28px,5vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.75rem 0 .25rem;}
+        :where(.ap-casting h2){font-weight:600;font-size:22px;line-height:1.3;margin:.25rem 0;}
+        :where(.ap-casting h3){font-weight:600;font-size:14px;line-height:1.2;margin:.25rem 0;color:#334155;}
+
+        :where(.ap-casting .cta){
+          position:relative;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+          padding:.75rem 1.25rem;min-width:160px;border-radius:9999px;color:#fff;text-decoration:none;
+          background:linear-gradient(90deg,var(--ap-primary-1),var(--ap-primary-2),var(--ap-primary-3));
+          box-shadow:0 10px 18px rgba(0,56,84,.18),0 6px 10px rgba(0,0,0,.06);
+          transition:transform .15s ease,box-shadow .15s ease,opacity .15s ease;
+        }
+        :where(.ap-casting .cta)::after{content:"";position:absolute;inset:0;border-radius:9999px;box-shadow:inset 0 1px 0 rgba(255,255,255,.38);pointer-events:none;}
+        :where(.ap-casting .cta:hover){transform:translateY(-1px);}
+        :where(.ap-casting .cta:active){transform:translateY(0);}
+
+        :where(.ap-casting .cta-ghost){
+          position:relative;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+          padding:.75rem 1.25rem;min-width:160px;border-radius:9999px;color:var(--ap-text);
+          background:#fff;border:1px solid var(--ap-border);box-shadow:0 1px 2px rgba(0,0,0,.06);
+          text-decoration:none;transition:transform .15s ease,box-shadow .15s ease;
+        }
+        :where(.ap-casting .cta-ghost:hover){transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.08);}
+
+        :where(.ap-casting .fi){position:relative;}
+        :where(.ap-casting .fi > .relative){position:relative;}
+        :where(.ap-casting .fi input,
+               .ap-casting .fi textarea,
+               .ap-casting .fi button[role="combobox"]){
+          width:100%;border:1px solid var(--ap-border);border-radius:12px;background:#fff;color:var(--ap-text);
+          font-size:14px;padding:1.05rem 2.25rem .6rem .75rem;outline:none;transition:border .15s ease,box-shadow .15s ease;
+        }
+        :where(.ap-casting .fi input:focus,
+               .ap-casting .fi textarea:focus,
+               .ap-casting .fi button[role="combobox"]:focus){
+          border-color:rgba(0,0,0,.26);box-shadow:0 0 0 4px rgba(2,6,23,.08);
+        }
+
+        :where(.ap-casting .fi input[aria-invalid="true"],
+               .ap-casting .fi textarea[aria-invalid="true"],
+               .ap-casting .fi button[aria-invalid="true"]){
+          border-color:#fb7185;background:#fff1f2;box-shadow:0 0 0 3px rgba(244,63,94,.12);
+        }
+
+        :where(.ap-casting .fi > label){
+          position:absolute;left:12px;top:10px;font-size:12px;line-height:1;color:#64748b;
+          pointer-events:none;transform-origin:left top;transition:all .16s ease;
+          padding:2px 6px;border-radius:8px;background:#fff;
+        }
+        :where(.ap-casting .fi > input::placeholder,
+               .ap-casting .fi > textarea::placeholder){color:transparent;opacity:0;}
+        :where(.ap-casting .fi > input:placeholder-shown + label,
+               .ap-casting .fi > textarea:placeholder-shown + label){top:12px;font-size:14px;color:#94a3b8;}
+        :where(.ap-casting .fi > input:focus + label,
+               .ap-casting .fi > textarea:focus + label,
+               .ap-casting .fi > input:not(:placeholder-shown) + label,
+               .ap-casting .fi > textarea:not(:placeholder-shown) + label){top:8px;font-size:12px;color:#475569;}
+
+        :where(.ap-casting .fi .hint){margin-top:4px;font-size:12px;color:#64748b;}
+        :where(.ap-casting .fi .error){margin-top:4px;font-size:12px;color:#e11d48;}
+
+        :where(.ap-casting .fi.fi-select ul[role="listbox"]){
+          position:absolute;left:0;right:0;top:calc(100% + 6px);
+          max-height:18rem;overflow:auto;border:1px solid var(--ap-border);
+          border-radius:12px;background:#fff;box-shadow:0 12px 30px rgba(0,0,0,.1);z-index:60;
+        }
+        :where(.ap-casting .fi.fi-select li[role="option"]){
+          display:flex;align-items:center;justify-content:space-between;
+          padding:.55rem .75rem;font-size:14px;cursor:pointer;
+        }
+        :where(.ap-casting .fi.fi-select li[role="option"][aria-selected="true"]){font-weight:600;color:#0f172a;}
+        :where(.ap-casting .fi.fi-select li[role="option"]:hover){background:#f8fafc;}
+
+        :where(.ap-casting .stepbar){height:4px;background:linear-gradient(90deg,#10b981,var(--ap-primary-3),#10b981);}
+        :where(.ap-casting .step-dot){display:inline-block;width:24px;height:6px;border-radius:999px;background:#e2e8f0;margin-left:4px;}
+        :where(.ap-casting .step-dot)[data-on="1"]{background:#059669;}
+
+        :where(.ap-casting .step-pill){
+          display:inline-flex;align-items:center;gap:.5rem;
+          padding:.4rem .65rem;border-radius:9999px;border:1px solid var(--ap-border);
+          background:#fff;color:#334155;transition:box-shadow .15s ease,transform .15s ease;
+        }
+        :where(.ap-casting .step-pill[data-active="true"]){
+          background:linear-gradient(90deg,#059669,#00a8e8);color:#fff;border-color:transparent;
+        }
+        :where(.ap-casting .step-pill[data-done="true"]){
+          background:#ecfdf5;color:#047857;border-color:#a7f3d0;
+        }
+        :where(.ap-casting .step-pill .num){
+          display:inline-flex;align-items:center;justify-content:center;
+          width:20px;height:20px;border-radius:9999px;font-size:11px;background:#e2e8f0;color:#334155;
+        }
+        :where(.ap-casting .step-pill[data-active="true"] .num){background:rgba(255,255,255,.25);color:#fff;}
+        :where(.ap-casting .step-pill[data-done="true"] .num){background:#059669;color:#fff;}
+
+        :where(.ap-casting .chip){
+          border:1px solid var(--ap-border);background:#fff;color:#0f172a;
+          padding:.4rem .75rem;border-radius:9999px;font-size:14px;transition:box-shadow .15s ease,transform .1s ease;
+        }
+        :where(.ap-casting .chip[aria-pressed="true"]){
+          background:linear-gradient(90deg,#059669,#047857);color:#fff;border-color:rgba(16,185,129,.7);
+          box-shadow:0 6px 16px rgba(0,0,0,.06);
+        }
+
+        :where(.ap-casting .mood-tile){border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.06);overflow:hidden;}
+        :where(.ap-casting .mood-tile .clamp-2){display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+        :where(.ap-casting .mood-tile .relative){position:relative;}
+        :where(.ap-casting .mood-tile .relative::before){content:"";display:block;padding-bottom:75%;}
+        :where(.ap-casting .mood-tile img){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+
+        :where(.ap-casting .ap-switch){
+          width:3rem;height:1.75rem;background:#cbd5e1;border-radius:9999px;position:relative;transition:background .2s ease;
+        }
+        :where(.ap-casting .ap-switch[aria-checked="true"]){background:#059669;}
+        :where(.ap-casting .ap-switch span){
+          position:absolute;top:.25rem;left:.25rem;width:1.25rem;height:1.25rem;background:#fff;border-radius:9999px;
+          box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .2s ease,right .2s ease;
+        }
+        :where(.ap-casting .ap-switch[aria-checked="true"] span){left:auto;right:.25rem;}
+
+        :where(.ap-casting .footer-note){
+          border:1px solid var(--ap-border);border-radius:16px;background:linear-gradient(180deg,#fff,#f8fafc);
+          padding:24px;text-align:center;color:#475569;
+        }
         .fi { position: relative; }
         .fi > input, .fi > textarea, .fi > select { width: 100%; }
         .fi > input::placeholder, .fi > textarea::placeholder { color: transparent; opacity: 0; }
@@ -1279,6 +1484,11 @@ export default function CastingPage() {
         @keyframes stepfade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .animate-step { animation: stepfade .22s ease-out; }
         @media (prefers-reduced-motion: reduce) { .animate-step { animation: none; } }
+        /* Minimal fallback so the loader looks fine even without Tailwind */
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </>
   );
@@ -1527,7 +1737,7 @@ function MoodTile({ label, img, selected, onToggle }: { label: string; img: stri
     <button
       type="button"
       onClick={onToggle}
-      className={`group relative overflow-hidden rounded-xl ring-1 transition ${selected ? 'ring-emerald-500 shadow' : 'ring-black/10 hover:shadow-sm'}`}
+      className={`mood-tile group relative overflow-hidden rounded-xl ring-1 transition ${selected ? 'ring-emerald-500 shadow' : 'ring-black/10 hover:shadow-sm'}`}
       aria-pressed={selected}
       title={label}
     >
@@ -1570,7 +1780,7 @@ function Pill({ value, checked, onChange }: { value: string; checked: boolean; o
     <button
       type="button"
       onClick={onChange}
-      className={`select-none rounded-full px-3 py-1.5 text-sm transition whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-300/50 ${
+      className={`chip select-none rounded-full px-3 py-1.5 text-sm transition whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-300/50 ${
         checked
           ? "bg-emerald-700 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white ring-1 ring-emerald-700/40 shadow"
           : "border border-black/10 bg-white text-slate-800 hover:shadow-sm"
@@ -1589,7 +1799,7 @@ function Switch({ checked, onToggle, highlight = false }: { checked: boolean; on
       role="switch"
       aria-checked={checked}
       onClick={onToggle}
-      className={`relative inline-flex h-7 w-12 sm:h-9 sm:w-16 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-out
+      className={`ap-switch relative inline-flex h-7 w-12 sm:h-9 sm:w-16 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-out
         ${checked ? 'bg-emerald-600' : 'bg-slate-300'}
         ${highlight ? 'ring-2 ring-rose-300' : ''}
         focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40`}
