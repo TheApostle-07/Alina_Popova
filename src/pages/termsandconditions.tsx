@@ -35,7 +35,7 @@ const Terms: NextPage = () => {
             Terms &amp; Conditions (&quot;Terms&quot;) govern your access to and use of our
             website, products, and services. By accessing or using our site, you
             agree to be bound by these Terms and our{" "}
-            <Link href="/privacy" className="text-cerulean underline">
+            <Link href="/privacypolicy" className="text-cerulean underline">
               Privacy Policy
             </Link>
             .
