@@ -5,9 +5,9 @@ import Image from "next/image";
 export default function Footer() {
   return (
     <>
-      {/* ─────────── Full‑width footer background ─────────── */}
+      {/* ─────────── Full-width footer background ─────────── */}
       <footer className="full-bleed bg-richblack text-white mt-0" aria-label="Site footer">
-        {/* Content wrapper (max‑width + internal gutter) */}
+        {/* Content wrapper (max-width + internal gutter) */}
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-6 py-12 md:grid-cols-3 justify-items-center md:justify-items-start text-center md:text-left">
           
           {/* Branding */}
@@ -42,13 +42,19 @@ export default function Footer() {
           <div>
             <h4 className="mb-4 text-lg font-semibold">Resources</h4>
             <ul className="flex flex-col items-center md:items-start space-y-2">
-              {["About Us", "Contact", "Privacy Policy"].map((item) => (
-                <li key={item}>
+              {[
+                { label: "About Us", href: "/about" },
+                { label: "Contact", href: "/contact" },
+                { label: "Privacy Policy", href: "/privacy" },
+                { label: "Terms & Conditions", href: "/terms" },
+                { label: "Refund Policy", href: "/refund-policy" },
+              ].map((link) => (
+                <li key={link.label}>
                   <Link
-                    href={`/${item.toLowerCase().replace(/\s+/g, "")}`}
+                    href={link.href}
                     className="text-gray-300 transition hover:text-cerulean"
                   >
-                    {item}
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -60,13 +66,13 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-gray-700 py-4 px-6">
           <p className="text-center text-sm text-gray-500">
-            © {new Date().getFullYear()} Alina Popova. All rights reserved.
+            © {new Date().getFullYear()} Alina Popova. All rights reserved.
           </p>
         </div>
       </footer>
 
       {/* ---------------------------------------------------------------- */}
-      {/* Add the full‑bleed utility once globally (e.g., in globals.css)   */}
+      {/* Add the full-bleed utility once globally (e.g., in globals.css)   */}
       {/* ---------------------------------------------------------------- */}
       {/*
         .full-bleed {
